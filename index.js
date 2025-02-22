@@ -1,18 +1,26 @@
-
 const readline = require('readline');
 const natural = require('natural');
 const TfIdf = natural.TfIdf;
+const tokenizer = new natural.SentenceTokenizer();
 
-let sentenceStore = [];
+let sentenceStore = [];  // Stores individual sentences
+let paragraphMap = {};   // Maps sentences to their original paragraphs
 
-// Preprocess a sentence: lowercase and remove punctuation
-function preprocess(sentence) {
-  return sentence.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+// Preprocess text: lowercase, remove punctuation
+function preprocess(text) {
+  return text.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
 }
 
-// Store a sentence in memory
-function storeSentence(sentence) {
-  sentenceStore.push(sentence);
+// Store a paragraph by splitting it into sentences
+function storeParagraph(paragraph) {
+  let sentences = tokenizer.tokenize(paragraph); // Split into sentences
+  sentences.forEach(sentence => {
+    let cleanedSentence = preprocess(sentence);
+    if (cleanedSentence) {
+      sentenceStore.push(sentence);
+      paragraphMap[sentence] = paragraph; // Map sentence to original paragraph
+    }
+  });
 }
 
 // Get all stored sentences
@@ -20,16 +28,17 @@ function getAllSentences() {
   return sentenceStore;
 }
 
-// Build TF-IDF vectors for the stored sentences and the query sentence
+// Build TF-IDF vectors for query and stored sentences
 function buildTfIdfVectors(querySentence, sentences) {
   const tfidf = new TfIdf();
 
-  // Add each stored sentence after preprocessing
+  // Add stored sentences
   sentences.forEach(sentence => tfidf.addDocument(preprocess(sentence)));
-  // Add the query sentence as the last document
+
+  // Add the query as the last document
   tfidf.addDocument(preprocess(querySentence));
 
-  // Extract vocabulary from all documents
+  // Extract vocabulary
   let vocabulary = [];
   tfidf.documents.forEach(doc => {
     Object.keys(doc).forEach(term => {
@@ -39,23 +48,18 @@ function buildTfIdfVectors(querySentence, sentences) {
     });
   });
 
-  // Create a vector for a document given its index
+  // Get vector representation
   function getVector(docIndex) {
-    const vector = [];
-    vocabulary.forEach(term => {
-      vector.push(tfidf.tfidf(term, docIndex));
-    });
-    return vector;
+    return vocabulary.map(term => tfidf.tfidf(term, docIndex));
   }
 
-  // Build the query vector (last document) and stored vectors (documents 0 .. n-1)
-  const queryVector = getVector(tfidf.documents.length - 1);
-  const storedVectors = sentences.map((_, idx) => getVector(idx));
-
-  return { queryVector, storedVectors, vocabulary };
+  return {
+    queryVector: getVector(tfidf.documents.length - 1),
+    storedVectors: sentences.map((_, idx) => getVector(idx))
+  };
 }
 
-// Cosine similarity function for two vectors
+// Compute Cosine Similarity
 function cosineSimilarity(vecA, vecB) {
   let dotProduct = 0, normA = 0, normB = 0;
   for (let i = 0; i < vecA.length; i++) {
@@ -68,34 +72,33 @@ function cosineSimilarity(vecA, vecB) {
   return (normA && normB) ? dotProduct / (normA * normB) : 0;
 }
 
-// Find the best match for a query sentence using TF-IDF cosine similarity.
-// Also returns all similarity scores for inspection.
+// Find best matching sentence and ranked list
 function findBestMatch(querySentence) {
   if (sentenceStore.length === 0) {
-    return { bestMatch: "No sentences stored yet.", similarity: 0, allSimilarities: [] };
+    return { bestMatch: "No sentences stored yet.", paragraph: "", allSimilarities: [] };
   }
 
   const { queryVector, storedVectors } = buildTfIdfVectors(querySentence, sentenceStore);
-  let bestMatch = null;
-  let highestSimilarity = -1;
   let similarities = [];
 
   for (let i = 0; i < storedVectors.length; i++) {
-    const similarity = cosineSimilarity(queryVector, storedVectors[i]);
-    similarities.push({ sentence: sentenceStore[i], similarity });
-    if (similarity > highestSimilarity) {
-      highestSimilarity = similarity;
-      bestMatch = sentenceStore[i];
-    }
+    similarities.push({
+      sentence: sentenceStore[i],
+      similarity: cosineSimilarity(queryVector, storedVectors[i])
+    });
   }
 
-  // Sort similarity scores descending for display
+  // Sort by similarity score (highest first)
   similarities.sort((a, b) => b.similarity - a.similarity);
 
-  return { bestMatch, similarity: highestSimilarity, allSimilarities: similarities };
+  return { 
+    bestMatch: similarities[0].sentence, 
+    paragraph: paragraphMap[similarities[0].sentence] || similarities[0].sentence,
+    allSimilarities: similarities.map(item => ({ sentence: item.sentence, score: item.similarity.toFixed(4) })) // Ranked list with scores
+  };
 }
 
-// CLI using readline for user interaction
+// CLI using readline
 const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout
@@ -104,46 +107,41 @@ const rl = readline.createInterface({
 function mainMenu() {
   rl.question(
     "\nChoose an option:\n" +
-    "1. Store a sentence\n" +
-    "2. Find similar sentence\n" +
+    "1. Store a paragraph\n" +
+    "2. Find similar sentence (also shows ranked list)\n" +
     "3. Show stored sentences\n" +
-    "4. Show all similarity scores for a query\n" +
-    "5. Exit\n> ", (choice) => {
+    "4. Exit\n> ", (choice) => {
     if (choice === '1') {
-      rl.question("Enter the sentence to store: ", (sentence) => {
-        storeSentence(sentence);
-        console.log(`Stored: "${sentence}"`);
+      rl.question("Enter the paragraph to store: ", (paragraph) => {
+        storeParagraph(paragraph);
+        console.log("Paragraph stored.");
         mainMenu();
       });
+
     } else if (choice === '2') {
       rl.question("Enter the query sentence: ", (sentence) => {
         const result = findBestMatch(sentence);
-        console.log(`Best match: "${result.bestMatch}" with similarity: ${result.similarity.toFixed(4)}`);
+        console.log(`\n🔹 Best match: "${result.bestMatch}"`);
+        console.log(`From paragraph: "${result.paragraph}"`);
+        console.log("\nOther matching sentences (ranked):");
+        console.log(JSON.stringify(result.allSimilarities, null, 2)); // Display as an array
         mainMenu();
       });
+
     } else if (choice === '3') {
       console.log("\nStored Sentences:");
       const stored = getAllSentences();
       if (stored.length === 0) {
         console.log("No sentences stored yet.");
       } else {
-        stored.forEach((item, index) => {
-          console.log(`${index + 1}. ${item}`);
-        });
+        stored.forEach((item, index) => console.log(`${index + 1}. ${item}`));
       }
       mainMenu();
+
     } else if (choice === '4') {
-      rl.question("Enter the query sentence: ", (sentence) => {
-        const result = findBestMatch(sentence);
-        console.log(`\nSimilarity scores for query "${sentence}":`);
-        result.allSimilarities.forEach((item, index) => {
-          console.log(`${index + 1}. ${item.sentence} -> Similarity: ${item.similarity.toFixed(4)}`);
-        });
-        mainMenu();
-      });
-    } else if (choice === '5') {
       console.log("Goodbye!");
       rl.close();
+
     } else {
       console.log("Invalid choice, please try again.");
       mainMenu();
@@ -151,21 +149,17 @@ function mainMenu() {
   });
 }
 
-const sampleSentences = [
-  "Hello, how are you?",
-  "The quick brown fox jumps over the lazy dog.",
-  "Artificial intelligence is transforming the world.",
-  "Data structures and algorithms are fundamental.",
-  "Cosine similarity measures the angle between vectors.",
-  "JavaScript is a versatile programming language.",
-  "Machine learning enables predictive analysis.",
-  "Natural language processing is a key part of AI.",
-  "Coding challenges improve problem solving skills.",
-  "OpenAI develops advanced AI models.",
-  "This is Anirudh here and I really love football. My favorite food is Chappati and Paneer Butter Masala."
+// Sample Paragraphs
+const sampleParagraphs = [
+  "Despite the rain, the hikers pressed on with quiet determination. The sky was dark, but their spirits remained unshaken.",
+  "In the city center, an old library quietly preserves the secrets of the past. Each book holds a forgotten story, waiting to be discovered.",
+  "Advancements in technology and AI are steadily reshaping our everyday lives.4 Innovations in automation and machine learning are transforming industries.",
+  "Amid urban clamor, the soft notes of a saxophone evoke a sense of calm nostalgia. A lone musician stands by the river, playing with emotion.",
+  "Global efforts to address climate change call for innovative ideas and careful planning. Solutions must be both sustainable and impactful."
 ];
 
-sampleSentences.forEach(sentence => storeSentence(sentence));
+// Store sample paragraphs
+sampleParagraphs.forEach(paragraph => storeParagraph(paragraph));
 
 console.log("Sentence TF-IDF Cosine Similarity Matcher");
 mainMenu();
