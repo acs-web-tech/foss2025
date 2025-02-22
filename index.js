@@ -1,24 +1,18 @@
+
 const readline = require('readline');
+const natural = require('natural');
+const TfIdf = natural.TfIdf;
 
 let sentenceStore = [];
 
-// Compute the sum of ASCII values for a word
-function wordAsciiSum(word) {
-  return word.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
+// Preprocess a sentence: lowercase and remove punctuation
+function preprocess(sentence) {
+  return sentence.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
 }
 
-// Preprocess a sentence: lowercase, remove punctuation, split into words, and convert each word to its ASCII sum
-function sentenceToVector(sentence) {
-  // Lowercase and remove punctuation (keeping spaces)
-  let cleaned = sentence.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
-  let words = cleaned.split(/\s+/).filter(Boolean);
-  return words.map(word => wordAsciiSum(word));
-}
-
-// Store a sentence in memory (along with its vector representation)
+// Store a sentence in memory
 function storeSentence(sentence) {
-  const vector = sentenceToVector(sentence);
-  sentenceStore.push({ sentence, vector });
+  sentenceStore.push(sentence);
 }
 
 // Get all stored sentences
@@ -26,13 +20,39 @@ function getAllSentences() {
   return sentenceStore;
 }
 
-// Pad a vector (array of numbers) to a given length with zeros
-function padVector(vector, length) {
-  let padded = vector.slice(); // Create a copy
-  while (padded.length < length) {
-    padded.push(0);
+// Build TF-IDF vectors for the stored sentences and the query sentence
+function buildTfIdfVectors(querySentence, sentences) {
+  const tfidf = new TfIdf();
+
+  // Add each stored sentence after preprocessing
+  sentences.forEach(sentence => tfidf.addDocument(preprocess(sentence)));
+  // Add the query sentence as the last document
+  tfidf.addDocument(preprocess(querySentence));
+
+  // Extract vocabulary from all documents
+  let vocabulary = [];
+  tfidf.documents.forEach(doc => {
+    Object.keys(doc).forEach(term => {
+      if (!vocabulary.includes(term)) {
+        vocabulary.push(term);
+      }
+    });
+  });
+
+  // Create a vector for a document given its index
+  function getVector(docIndex) {
+    const vector = [];
+    vocabulary.forEach(term => {
+      vector.push(tfidf.tfidf(term, docIndex));
+    });
+    return vector;
   }
-  return padded;
+
+  // Build the query vector (last document) and stored vectors (documents 0 .. n-1)
+  const queryVector = getVector(tfidf.documents.length - 1);
+  const storedVectors = sentences.map((_, idx) => getVector(idx));
+
+  return { queryVector, storedVectors, vocabulary };
 }
 
 // Cosine similarity function for two vectors
@@ -48,42 +68,30 @@ function cosineSimilarity(vecA, vecB) {
   return (normA && normB) ? dotProduct / (normA * normB) : 0;
 }
 
-// Find the best match for a query sentence using cosine similarity on the ASCII sum vectors.
+// Find the best match for a query sentence using TF-IDF cosine similarity.
 // Also returns all similarity scores for inspection.
 function findBestMatch(querySentence) {
   if (sentenceStore.length === 0) {
     return { bestMatch: "No sentences stored yet.", similarity: 0, allSimilarities: [] };
   }
-  
-  const queryVectorRaw = sentenceToVector(querySentence);
-  
-  // Determine the maximum vector length among the query and all stored sentences
-  let maxLength = queryVectorRaw.length;
-  sentenceStore.forEach(item => {
-    if (item.vector.length > maxLength) {
-      maxLength = item.vector.length;
-    }
-  });
-  
-  const queryVector = padVector(queryVectorRaw, maxLength);
-  
+
+  const { queryVector, storedVectors } = buildTfIdfVectors(querySentence, sentenceStore);
   let bestMatch = null;
   let highestSimilarity = -1;
   let similarities = [];
-  
-  sentenceStore.forEach(item => {
-    const storedVectorPadded = padVector(item.vector, maxLength);
-    const similarity = cosineSimilarity(queryVector, storedVectorPadded);
-    similarities.push({ sentence: item.sentence, similarity });
+
+  for (let i = 0; i < storedVectors.length; i++) {
+    const similarity = cosineSimilarity(queryVector, storedVectors[i]);
+    similarities.push({ sentence: sentenceStore[i], similarity });
     if (similarity > highestSimilarity) {
       highestSimilarity = similarity;
-      bestMatch = item.sentence;
+      bestMatch = sentenceStore[i];
     }
-  });
-  
+  }
+
   // Sort similarity scores descending for display
   similarities.sort((a, b) => b.similarity - a.similarity);
-  
+
   return { bestMatch, similarity: highestSimilarity, allSimilarities: similarities };
 }
 
@@ -120,7 +128,7 @@ function mainMenu() {
         console.log("No sentences stored yet.");
       } else {
         stored.forEach((item, index) => {
-          console.log(`${index + 1}. ${item.sentence}`);
+          console.log(`${index + 1}. ${item}`);
         });
       }
       mainMenu();
@@ -143,5 +151,21 @@ function mainMenu() {
   });
 }
 
-console.log("Sentence ASCII Sum Cosine Similarity Matcher");
+const sampleSentences = [
+  "Hello, how are you?",
+  "The quick brown fox jumps over the lazy dog.",
+  "Artificial intelligence is transforming the world.",
+  "Data structures and algorithms are fundamental.",
+  "Cosine similarity measures the angle between vectors.",
+  "JavaScript is a versatile programming language.",
+  "Machine learning enables predictive analysis.",
+  "Natural language processing is a key part of AI.",
+  "Coding challenges improve problem solving skills.",
+  "OpenAI develops advanced AI models.",
+  "This is Anirudh here and I really love football. My favorite food is Chappati and Paneer Butter Masala."
+];
+
+sampleSentences.forEach(sentence => storeSentence(sentence));
+
+console.log("Sentence TF-IDF Cosine Similarity Matcher");
 mainMenu();
