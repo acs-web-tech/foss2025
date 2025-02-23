@@ -1,6 +1,6 @@
 # Latent Search Library
 ## Overview 
-Developed as a Node.js Library reads sentences from a CSV file and identifies the closest match to a given input sentence through TF-IDF (Term Frequency - Inverse Document Frequency) and Cosine Similarity measures. which is an attempt to reduce the influence of embedding models on semantic search this library attempts to match by distance score of each tokens
+Developed as a Node.js Library reads sentences from a CSV file and identifies the closest match to a given input sentence through TF-IDF (Term Frequency - Inverse Document Frequency) and Cosine Similarity measures. which is an attempt to reduce the influence of embedding models on semantic search this library attempts to match by distance score of each tokens.
 
 ## Features 
 - The system uses TF-IDF to transform sentences into numerical vectors for analysis.
@@ -145,13 +145,26 @@ This project uses the `natural` library in JavaScript to process text data effec
 - The function `cosineSimilarity(vector1, vector2)` computes the similarity score between two vectors.
 - Higher similarity scores indicate more relevant matches.
 
+### Use Cases
+- Search Engines: Improve search relevance by finding the most similar documents.
+- Plagiarism Detection: Compare text similarity in academic or legal cases.
+- Semantic Text Matching: Match job descriptions with resumes.
+
+## Addtional Benfit
+- Data retrieval from disk storage is generally slower compared to retrieval from RAM. The Latent Search Library enhances performance by storing data in-memory (RAM), enabling significantly faster access and processing times might differ upto the size the data.
+- 
+### For Developers
+- Extend Functionality: Modify the tokenization, stop-word removal, or similarity computation.
+- Integrate with APIs: Connect the library to web applications for real-time text comparison.
+- Enhance NLP Pipelines: Use in combination with machine learning models for semantic understanding.
+
 This approach enhances document similarity, making information retrieval more efficient.
 
 ### Our outcome
-  - We are able match sentences based on thier tokenized distance between each , the user input and the data's in the dataset which achived 56% of evaluation score without a embedding model involvement and with less expensive NLP Algorithms
+  -  Match sentences based on thier tokenized distance between each , the user input and the data's in the dataset which achived 56% of evaluation score without a embedding model involvement and with less expensive NLP Algorithms
 
 ### License
 
-- This project is licensed under the [MIT License](LICENSE).
+- This project is licensed under the [GPL License](LICENSE).
 - You are free to use, modify, and distribute this software under the terms of the MIT license. 
 
