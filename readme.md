@@ -21,13 +21,13 @@ cd <project-directory>
 ```bash 
 npm install 
 ``` 
-
+[Demo video link](https://drive.google.com/file/d/1yBqbifa3MyVGs66R85gwjochXga_FHpR/view?usp=sharing)
 ## Usage 
 Run the script using: 
 ```bash 
 node main.js 
 ``` 
-## check the main.js file for examples
+# check the main.js file for examples
 
 ## How It Works 
 ### Preprocessing 
