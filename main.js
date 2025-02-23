@@ -7,7 +7,8 @@ async function JSON() {
     for (let i = 0; i < parsedData.length; i++) {
         storeParagraph(parsedData[i].data)
     }
-    console.log(findBestMatch("we need to have a proper plan"))
+    let result = findBestMatch("we need to have a proper plan")
+    console.log("Best match :", result.bestMatch, "Paragraph :", result.paragraph)
 }
 // uncomment it to check the output
 //JSON()
@@ -17,7 +18,8 @@ async function JSON() {
 async function Pdf() {
     let { loadAllFiles, findSimilarSentence, showStoredSentences } = require("./readers/pdfreader")
     await loadAllFiles(["./test-script/dataset.pdf"])
-    console.log(findSimilarSentence("we need to learn AI and improve our life"))
+    let result = findSimilarSentence("we need to learn AI and improve our life")
+    console.log("Best match :", result[0].bestMatch)
 
 }
 // uncomment it to check the output
@@ -26,10 +28,11 @@ async function Pdf() {
 
 /****   CSV Data parsing and Similarity search ****/
 async function CSV() {
-    const {findBestMatch} = require("./index")
-    let { readCSV,sentenceStore } = require("./readers/csvReader")
-    let data =await readCSV("./test-script/test.csv", "Video")
-    console.log(findBestMatch("charlie chaplin"),sentenceStore)
+    const { findBestMatch } = require("./index")
+    let { readCSV, sentenceStore } = require("./readers/csvReader")
+    let data = await readCSV("./test-script/test.csv", "Video")
+    let result = findBestMatch("charlie chaplin")
+    console.log("Best match :", result.bestMatch, "Paragraph :", result.paragraph)
 }
 // uncomment it to check the output
 //CSV()
