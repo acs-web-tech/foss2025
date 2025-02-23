@@ -150,7 +150,7 @@ This project uses the `natural` library in JavaScript to process text data effec
 - Plagiarism Detection: Compare text similarity in academic or legal cases.
 - Semantic Text Matching: Match job descriptions with resumes.
 
-## Addtional Benfit
+## Additional Benfit
 - Data retrieval from disk storage is generally slower compared to retrieval from RAM. The Latent Search Library enhances performance by storing data in-memory (RAM), enabling significantly faster access and processing times might differ upto the size the data.
 - 
 ### For Developers
