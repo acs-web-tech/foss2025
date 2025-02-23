@@ -1,6 +1,6 @@
 # Latent Search Library
 ## Overview 
-Developed as a Node.js Library reads sentences from a CSV file and identifies the closest match to a given input sentence through TF-IDF (Term Frequency - Inverse Document Frequency) and Cosine Similarity measures. which is an attempt to reduce the influence of embedding models on semantic search this library attempts to match by distance score of each tokens.
+Developed as a Node.js Library reads sentences from a PDF file and identifies the closest match to a given input sentence through TF-IDF (Term Frequency - Inverse Document Frequency) and Cosine Similarity measures. which is an attempt to reduce the influence of embedding models on semantic search this library attempts to match by distance score of each tokens.
 
 ## Features 
 - The system uses TF-IDF to transform sentences into numerical vectors for analysis.
